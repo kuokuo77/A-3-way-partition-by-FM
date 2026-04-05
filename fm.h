@@ -20,6 +20,7 @@ public:
     FM(ifstream &fin)  {
         cell_count_ = 0;
         net_count_  = 0;
+        cut_size_ = 0;
         num_in_partition_.resize(3, 0);        
         Parser(fin);
         Initialization();
@@ -47,6 +48,7 @@ public:
     void decrementNumInPartition(int p) { num_in_partition_[p-1]--; }
     int getNumInPartition(int p) const { return num_in_partition_[p-1]; }
     void updateGain(Node *node);
+    void restoreBestSolution(Log *log);
 
 
 private:
@@ -61,6 +63,7 @@ private:
     vector<BList*> blist_;
     int pmax_;
     int total_gain_;
+    int cut_size_;
 
 };
 

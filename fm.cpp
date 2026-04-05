@@ -62,6 +62,7 @@ void FM::Parser(ifstream &fin) {
 void FM::Initialization() {
     bool toG1;
     int counter = 0;
+    cut_size_ = 0;
 
     // Assign random partition
 
@@ -95,8 +96,10 @@ void FM::Initialization() {
                     n->incrementNumInPartition(2);
                 }
                 if(inG1 && inG2) {
-                    n->updateCut(true);
-                    // break;
+                    if(n->isCut()==false) {
+                        n->updateCut(true);
+                        cut_size_++;
+                    }
                 }
             }
         }
@@ -204,7 +207,9 @@ void FM::Initialization() {
             }
         }
     }
-
+    cout << "num of cell: " << cell_count_ << endl;
+    cout << "num of net: " << net_count_ << endl;
+    cout << "initial cut size: " << cut_size_ << endl;
     // blist_[0]->printList();
 
 }
@@ -223,8 +228,8 @@ void FM::Solve() {
     int min_available_cells = (1-ratio_) * cell_array_.size() / 3;
     int max_available_cells = (1+ratio_) * cell_array_.size() / 3;
 
-    int total_num_cell = cell_array_.size();
-    Log log(total_gain_);
+    // int total_num_cell = cell_array_.size();
+    Log log(cut_size_);
     // Create a log to store moving history
     // blist_[0]->printList();
     for(int i=0; i<cell_count_; i++) {
@@ -270,6 +275,7 @@ void FM::Solve() {
                 left_node->getCell()->movePartition(2);
 
                 page->setCellMoved(left_node->getCell());
+                page->setGain(left_node->getCell()->getGain());
                 
                 // left->getBL()[left_node->getCell()->getGain() + getPmax()].remove(left_node);
             }
@@ -291,6 +297,7 @@ void FM::Solve() {
                 right_node->getCell()->movePartition(1);
 
                 page->setCellMoved(right_node->getCell());
+                page->setGain(right_node->getCell()->getGain());
                 // right->getBL()[right_node->getCell()->getGain() + getPmax()].remove(right_node);
                 
             }
@@ -313,6 +320,7 @@ void FM::Solve() {
                     right_node->getCell()->movePartition(1);
 
                     page->setCellMoved(right_node->getCell());
+                    page->setGain(right_node->getCell()->getGain());
                     // right->getBL()[right_node->getCell()->getGain() + getPmax()].remove(right_node);
                 }
                 else {
@@ -322,6 +330,7 @@ void FM::Solve() {
                     left_node->getCell()->movePartition(2);
 
                     page->setCellMoved(left_node->getCell());
+                    page->setGain(left_node->getCell()->getGain());
                     // TODO: Remove operation should be Encapsulated
                     // left->getBL()[left_node->getCell()->getGain() + getPmax()].remove(left_node);
                 }
@@ -336,6 +345,7 @@ void FM::Solve() {
                     left_node->getCell()->movePartition(2);
 
                     page->setCellMoved(left_node->getCell());
+                    page->setGain(left_node->getCell()->getGain());
                     // left->getBL()[left_node->getCell()->getGain() + getPmax()].remove(left_node);
                 }
                 else {
@@ -346,6 +356,7 @@ void FM::Solve() {
                     right_node->getCell()->movePartition(1);
                     
                     page->setCellMoved(right_node->getCell());
+                    page->setGain(right_node->getCell()->getGain());
                     // blist_[0]->printList();
                     // right->getBL()[right_node->getCell()->getGain() + getPmax()].remove(right_node);
                 }
@@ -359,6 +370,9 @@ void FM::Solve() {
     }
     
     // log.printLog();
+    log.printMinCutSize();
+    // cout << "total net: " << net_count_ << endl;
+    // cout << "total gain: " << getTotalGain() << endl;
 
 }
 
@@ -481,6 +495,9 @@ inline void FM::updateGain(Node *node) {
 
 }
 
+void FM::restoreBestSolution(Log *log) {
+
+}
 
 
 void FM::Print_Cell_array() {

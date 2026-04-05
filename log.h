@@ -31,28 +31,49 @@ public:
     void setStep(int step) { step_ = step; }
     void setCellMoved(Cell *cell) { cell_moved_ = cell; }
     Cell *getCellMoved() const { return cell_moved_; }
+    int getGain() const { return gain_; }
+    void setGain(int gain) { gain_ = gain; }
 private:
     int step_;
     Cell *cell_moved_;
+    int gain_;
 };
 
 class Log {
 public:
-    Log(int max_gain) : max_gain_(max_gain), max_step_(0) {}
+    Log(int init_cut_size) : init_cut_size_(init_cut_size), max_step_(0) {
+        min_cut_size_ = init_cut_size;
+        cur_cut_size_ = init_cut_size;
+    }
     ~Log() {}
-    void addPage(Page *page) { move_log_.push_back(page);
+    void addPage(Page *page) {
+        move_log_.push_back(page);
+        cur_cut_size_ = cur_cut_size_ - page->getGain();
+        if(cur_cut_size_ < min_cut_size_) {
+            max_step_ = page->getStep();
+            min_cut_size_ = cur_cut_size_;
+        }
     }
     void printLog() {
         cout << "<<  Log >>" << endl;
         for(auto page : move_log_) {
             cout << "| step: " << page->getStep();
-            cout << " cell moved: " << page->getCellMoved()->getId() << " |" << endl;
+            cout << " cell moved: " << page->getCellMoved()->getId() << " |";
+            cout << " gain: " << page->getGain() << " |" << endl;
         }
+        
+    }
+    void printMinCutSize() {
+        cout << "max step: " << max_step_ << endl;
+        cout << "init cut size: " << init_cut_size_ << endl;
+        cout << "min cut size: " << min_cut_size_ << endl;
         cout << "<< End of Log >>" << endl;
     }
 
 private:
-    int max_gain_;
+    int init_cut_size_;
+    int min_cut_size_;
+    int cur_cut_size_;
     int max_step_;
     vector<Page*> move_log_;
 };

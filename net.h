@@ -44,6 +44,7 @@ public:
 	vector<Cell_info*> getCells() const { return cells_; }
 	void addCell(int id, Cell *cell) {cells_.push_back(new Cell_info(id, cell));}
 	void updateCut(bool is_cut) { is_cut_ = is_cut; }
+	bool isCut() const { return is_cut_; }
 
 	void incrementNumInPartition(int p) { num_in_partition_[p-1]++; }
 	void decrementNumInPartition(int p) { num_in_partition_[p-1]--; }
