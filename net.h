@@ -4,7 +4,7 @@
 #define NET_H
 
 #include <vector>
-#include "cell.h"
+// #include "cell.h"
 #include <string>
 
 class Cell;
@@ -34,7 +34,7 @@ public:
 
 class Net {
 public:
-    Net(int id, string name) : id_(id), name_(name) {
+    Net(int id, string name) : id_(id), name_(name), is_cut_(false) {
 		num_in_partition_.resize(3, 0);
 	}
 	~Net() {}
@@ -45,6 +45,7 @@ public:
 	void addCell(int id, Cell *cell) {cells_.push_back(new Cell_info(id, cell));}
 	void updateCut(bool is_cut) { is_cut_ = is_cut; }
 	bool isCut() const { return is_cut_; }
+	void intraUpdateCut();
 
 	void incrementNumInPartition(int p) { num_in_partition_[p-1]++; }
 	void decrementNumInPartition(int p) { num_in_partition_[p-1]--; }
@@ -58,6 +59,7 @@ private:
 	vector<int> num_in_partition_;
 	bool is_cut_;    
 };
+
 
 
 #endif

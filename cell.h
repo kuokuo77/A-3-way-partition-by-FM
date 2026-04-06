@@ -91,6 +91,16 @@ private:
     bool isLocked_;
 };
 
+inline void Net::intraUpdateCut() {
+    int inG1 = 0, inG2 = 0, inG3 = 0;
+    for (auto cell_info : cells_) {
+        if (cell_info->cell_ptr_->getPartition()==1) inG1=1;
+        else if (cell_info->cell_ptr_->getPartition()==2) inG2=1;
+        else if (cell_info->cell_ptr_->getPartition()==3) inG3=1;
+    }
+    // cout << "net " << getId() << " inG1: " << inG1 << " inG2: " << inG2 << " inG3: " << inG3 << endl;
+    is_cut_ =  (inG1+inG2+inG3>1);
 
+}
 
 #endif

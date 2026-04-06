@@ -48,7 +48,97 @@ public:
     void decrementNumInPartition(int p) { num_in_partition_[p-1]--; }
     int getNumInPartition(int p) const { return num_in_partition_[p-1]; }
     void updateGain(Node *node);
-    void restoreBestSolution(Log *log);
+    void restoreBestSolution(Log *log, int phase);
+
+    // GPT
+    int recomputeCutSizeFromPartitions() {
+        int cut = 0;
+        for (auto n : net_array_) {
+            if (n == nullptr) continue;
+            bool inG1 = false, inG2 = false;
+            for (auto c : n->getCells()) {
+                int p = c->cell_ptr_->getPartition();
+                if (p == 1) inG1 = true;
+                else if (p == 2) inG2 = true;
+            }
+            if (inG1 && inG2) cut++;
+        }
+        return cut;
+    }
+    int recomputeGainFromScratch(Cell *target) {
+        int gain = 0;
+        int from_p = target->getPartition();
+        int to_p = (from_p == 1) ? 2 : 1;
+
+        for (auto net_info : target->getNets()) {
+            Net *net = net_info->net_ptr_;
+
+            int from = 0, to = 0;
+            for (auto cell_info : net->getCells()) {
+                int p = cell_info->cell_ptr_->getPartition();
+                if (p == from_p) from++;
+                else if (p == to_p) to++;
+            }
+
+            if (from == 1) gain++;
+            if (to == 0) gain--;
+        }
+        return gain;
+    }
+    void debugCellGainBreakdown(Cell *target) {
+        int from_p = target->getPartition();
+        int to_p   = (from_p == 1) ? 2 : 1;
+
+        cout << "=== debug cell " << target->getId()
+            << " partition " << from_p << " ===" << endl;
+
+        int total = 0;
+        for (auto net_info : target->getNets()) {
+            Net *net = net_info->net_ptr_;
+            int from = 0, to = 0;
+
+            for (auto cell_info : net->getCells()) {
+                int p = cell_info->cell_ptr_->getPartition();
+                if (p == from_p) from++;
+                else if (p == to_p) to++;
+                // else to++;
+            }
+
+            int delta = 0;
+            if (from == 1) delta++;
+            if (to == 0) delta--;
+
+            total += delta;
+
+            cout << "net " << net->getId()
+                << " from=" << from
+                << " to=" << to
+                << " contrib=" << delta << endl;
+        }
+
+        cout << "true gain total = " << total
+            << ", stored gain = " << target->getGain() << endl;
+    }
+    void debugIncidentNetCounts(Cell *target) {
+        cout << "=== incident net counts for cell " << target->getId() << " ===" << endl;
+        for (auto net_info : target->getNets()) {
+            Net *net = net_info->net_ptr_;
+            int actual1 = 0, actual2 = 0;
+
+            for (auto cell_info : net->getCells()) {
+                int p = cell_info->cell_ptr_->getPartition();
+                if (p == 1) actual1++;
+                else if (p == 2) actual2++;
+            }
+
+            cout << "net " << net->getId()
+                << " cached=(" << net->getNumInPartition(1)
+                << "," << net->getNumInPartition(2) << ")"
+                << " actual=(" << actual1
+                << "," << actual2 << ")" << endl;
+        }
+    }
+
 
 
 private:

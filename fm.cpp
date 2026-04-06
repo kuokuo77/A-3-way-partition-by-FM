@@ -134,29 +134,29 @@ void FM::Initialization() {
                     c->cell_ptr_->incrementTE();
                 }
             }
-            else {
-                // case II : inG1==1 : FS of the cell in G1 = 1, TE of that = 0. FS TE of the other cells are both 0
-                if(inG1 == 1) {
-                    for(auto c : n->getCells()) {
-                        if(c->cell_ptr_->getPartition()==1) {
-                            // cout << "cell" << c->cell_ptr_->getId() << "'s FS is increased" << endl;
-                            c->cell_ptr_->incrementFS();
-                            // break;
-                        }
-                    }
-                }
-                // case III : inG2==1 : FS of the cell in G2 = 1, TE  of that = 0. FS TE of the other cells are both 0
-                if(inG2 == 1) {
-                    for(auto c : n->getCells()) {
-                        if(c->cell_ptr_->getPartition()==2) {
-                            c->cell_ptr_->incrementFS();
-                            // cout << "cell" << c->cell_ptr_->getId() << "'s FS is increased" << endl;
-                            // break;
-                        }
-                    }
-                }
 
+                // case II : inG1==1 : FS of the cell in G1 = 1, TE of that = 0. FS TE of the other cells are both 0
+            if(inG1 == 1) {
+                for(auto c : n->getCells()) {
+                    if(c->cell_ptr_->getPartition()==1) {
+                        // cout << "cell" << c->cell_ptr_->getId() << "'s FS is increased" << endl;
+                        c->cell_ptr_->incrementFS();
+                        // break;
+                    }
+                }
             }
+            // case III : inG2==1 : FS of the cell in G2 = 1, TE  of that = 0. FS TE of the other cells are both 0
+            if(inG2 == 1) {
+                for(auto c : n->getCells()) {
+                    if(c->cell_ptr_->getPartition()==2) {
+                        c->cell_ptr_->incrementFS();
+                        // cout << "cell" << c->cell_ptr_->getId() << "'s FS is increased" << endl;
+                        // break;
+                    }
+                }
+            }
+
+            
             
             // case IV : default
             
@@ -212,6 +212,13 @@ void FM::Initialization() {
     cout << "initial cut size: " << cut_size_ << endl;
     // blist_[0]->printList();
 
+    // GPT
+    // Cell *c = cell_array_[15679];
+    // cout << "[AFTER INIT] cell 15679 stored gain = " << c->getGain()
+    //     << ", true gain = " << recomputeGainFromScratch(c) << endl;
+    // debugIncidentNetCounts(c);
+    // debugCellGainBreakdown(c);
+
 }
 
 void FM::Solve() {
@@ -230,8 +237,15 @@ void FM::Solve() {
 
     // int total_num_cell = cell_array_.size();
     Log log(cut_size_);
+
+    // GPT
+    // int running_cut = cut_size_;
+
+
     // Create a log to store moving history
     // blist_[0]->printList();
+    // blist_[1]->printList();
+    // cout << "================ initial blist ==================" << endl;
     for(int i=0; i<cell_count_; i++) {
         // cout << "iter: " << i << endl;
         // if(i==7086) {
@@ -250,6 +264,36 @@ void FM::Solve() {
 
         Node *left_node = left->getMaxGainNode();
         Node *right_node = right->getMaxGainNode();
+
+        // GPT
+        // if (left_node) {
+        //     int g_stored = left_node->getCell()->getGain();
+        //     int g_true   = recomputeGainFromScratch(left_node->getCell());
+        //     if (g_stored != g_true) {
+        //         cout << "[LEFT GAIN MISMATCH] step " << i
+        //             << " cell " << left_node->getCell()->getId()
+        //             << " stored " << g_stored
+        //             << " true " << g_true << endl;
+        //             debugCellGainBreakdown(left_node->getCell());
+        //         break;
+        //     }
+        // }
+
+        // if (right_node) {
+        //         int g_stored = right_node->getCell()->getGain();
+        //         int g_true   = recomputeGainFromScratch(right_node->getCell());
+        //         if (g_stored != g_true) {
+        //             cout << "[RIGHT GAIN MISMATCH] step " << i
+        //                 << " cell " << right_node->getCell()->getId()
+        //                 << " stored " << g_stored
+        //                 << " true " << g_true << endl;
+        //                 debugIncidentNetCounts(right_node->getCell());
+        //                 debugCellGainBreakdown(right_node->getCell());
+        //             break;
+        //         }
+        //     }
+
+
 
         // if(i==7086) {
         //     cout << "left node: " << left_node->getCell()->getId() << " right node: " << right_node->getCell()->getId() << endl;
@@ -271,11 +315,20 @@ void FM::Solve() {
                 // move from left to right
                 decrementNumInPartition(1);
                 incrementNumInPartition(2);
-                updateGain(left_node);
-                left_node->getCell()->movePartition(2);
+                // updateGain(left_node);
+                // left_node->getCell()->movePartition(2);
 
-                page->setCellMoved(left_node->getCell());
-                page->setGain(left_node->getCell()->getGain());
+                // page->setCellMoved(left_node->getCell());
+                // page->setGain(left_node->getCell()->getGain());
+                int selected_gian = left_node->getCell()->getGain();
+                Cell *moved = left_node->getCell();
+                updateGain(left_node);
+                moved->movePartition(2);
+                page->setCellMoved(moved);
+                page->setGain(selected_gian);
+
+
+
                 
                 // left->getBL()[left_node->getCell()->getGain() + getPmax()].remove(left_node);
             }
@@ -293,11 +346,21 @@ void FM::Solve() {
                 decrementNumInPartition(2);
                 
 
-                updateGain(right_node);
-                right_node->getCell()->movePartition(1);
+                // updateGain(right_node);
+                // right_node->getCell()->movePartition(1);
 
-                page->setCellMoved(right_node->getCell());
-                page->setGain(right_node->getCell()->getGain());
+                // page->setCellMoved(right_node->getCell());
+                // page->setGain(right_node->getCell()->getGain());
+
+                int selected_gian = right_node->getCell()->getGain();
+                Cell *moved = right_node->getCell();
+                updateGain(right_node);
+                moved->movePartition(1);
+                page->setCellMoved(moved);
+                page->setGain(selected_gian);
+                
+
+
                 // right->getBL()[right_node->getCell()->getGain() + getPmax()].remove(right_node);
                 
             }
@@ -316,21 +379,35 @@ void FM::Solve() {
                     // move from right to left
                     incrementNumInPartition(1);
                     decrementNumInPartition(2);
-                    updateGain(right_node);
-                    right_node->getCell()->movePartition(1);
+                    // updateGain(right_node);
+                    // right_node->getCell()->movePartition(1);
 
-                    page->setCellMoved(right_node->getCell());
-                    page->setGain(right_node->getCell()->getGain());
+                    // page->setCellMoved(right_node->getCell());
+                    // page->setGain(right_node->getCell()->getGain());
+
+                    int selected_gian = right_node->getCell()->getGain();
+                    Cell *moved = right_node->getCell();
+                    updateGain(right_node);
+                    moved->movePartition(1);
+                    page->setCellMoved(moved);
+                    page->setGain(selected_gian);
+
                     // right->getBL()[right_node->getCell()->getGain() + getPmax()].remove(right_node);
                 }
                 else {
                     decrementNumInPartition(1);
                     incrementNumInPartition(2);
-                    updateGain(left_node);
-                    left_node->getCell()->movePartition(2);
+                    // updateGain(left_node);
+                    // left_node->getCell()->movePartition(2);
 
-                    page->setCellMoved(left_node->getCell());
-                    page->setGain(left_node->getCell()->getGain());
+                    // page->setCellMoved(left_node->getCell());
+                    // page->setGain(left_node->getCell()->getGain());
+                    int selected_gian = left_node->getCell()->getGain();
+                    Cell *moved = left_node->getCell();
+                    updateGain(left_node);
+                    moved->movePartition(2);
+                    page->setCellMoved(moved);
+                    page->setGain(selected_gian);
                     // TODO: Remove operation should be Encapsulated
                     // left->getBL()[left_node->getCell()->getGain() + getPmax()].remove(left_node);
                 }
@@ -341,22 +418,39 @@ void FM::Solve() {
                     
                     decrementNumInPartition(1);
                     incrementNumInPartition(2);
-                    updateGain(left_node);
-                    left_node->getCell()->movePartition(2);
+                    // updateGain(left_node);
+                    // left_node->getCell()->movePartition(2);
 
-                    page->setCellMoved(left_node->getCell());
-                    page->setGain(left_node->getCell()->getGain());
+                    // page->setCellMoved(left_node->getCell());
+                    // page->setGain(left_node->getCell()->getGain());
+
+                    int selected_gian = left_node->getCell()->getGain();
+                    Cell *moved = left_node->getCell();
+                    updateGain(left_node);
+                    moved->movePartition(2);
+                    page->setCellMoved(moved);
+                    page->setGain(selected_gian);
+
                     // left->getBL()[left_node->getCell()->getGain() + getPmax()].remove(left_node);
                 }
                 else {
                     
                     incrementNumInPartition(1);
                     decrementNumInPartition(2);
-                    updateGain(right_node);
-                    right_node->getCell()->movePartition(1);
+                    // updateGain(right_node);
+                    // right_node->getCell()->movePartition(1);
                     
-                    page->setCellMoved(right_node->getCell());
-                    page->setGain(right_node->getCell()->getGain());
+                    // page->setCellMoved(right_node->getCell());
+                    // page->setGain(right_node->getCell()->getGain());
+
+                    int selected_gian = right_node->getCell()->getGain();
+                    Cell *moved = right_node->getCell();
+                    updateGain(right_node);
+                    moved->movePartition(1);
+                    page->setCellMoved(moved);
+                    page->setGain(selected_gian);
+
+
                     // blist_[0]->printList();
                     // right->getBL()[right_node->getCell()->getGain() + getPmax()].remove(right_node);
                 }
@@ -364,8 +458,27 @@ void FM::Solve() {
         }
         // blist_[0]->printList();
         // blist_[1]->printList();
+        // cout << "================ end of iter " << i << " ===================" << endl;
+
+        
+
 
         log.addPage(page);
+
+        // // GPT
+        // int actual_cut = recomputeCutSizeFromPartitions();
+        // int expected_cut = running_cut - page->getGain();
+
+        // if (actual_cut != expected_cut) {
+        //     cout << "Mismatch at step " << page->getStep()
+        //         << ", cell " << page->getCellMoved()->getId()
+        //         << ", gain " << page->getGain()
+        //         << ", expected " << expected_cut
+        //         << ", actual " << actual_cut << endl;
+        //     break;
+        // }
+
+        // running_cut = actual_cut;
         // if(i>=7085)cout << "finish iter " << i << endl;
     }
     
@@ -373,6 +486,14 @@ void FM::Solve() {
     log.printMinCutSize();
     // cout << "total net: " << net_count_ << endl;
     // cout << "total gain: " << getTotalGain() << endl;
+    restoreBestSolution(&log, 1);
+
+    int temp_cut = 0;
+    for(auto n : net_array_) {
+        n->intraUpdateCut();
+        if(n->isCut()==true) temp_cut++;
+    }
+    cout << "after restore, cut size is: " << temp_cut << endl;
 
 }
 
@@ -395,9 +516,14 @@ inline void FM::updateGain(Node *node) {
 
     // for each net n on the base cell do
     for(auto net_info : node->getCell()->getNets()) {
+
         Net *net = net_info->net_ptr_;
         int victim_cell_partition = node->getCell()->getPartition();
         // cout << "--- iter " << net->getName() << " --- " << endl;
+
+        
+
+
         
         if(victim_cell_partition == 1) {
             from = net->getNumInPartition(1);
@@ -407,6 +533,17 @@ inline void FM::updateGain(Node *node) {
             from = net->getNumInPartition(2);
             to = net->getNumInPartition(1);
         }
+
+        // GPT
+        // if (net->getId() == 12905) {
+        //     cout << "[WATCH12905] base cell " << node->getCell()->getId()
+        //         << " basePart " << victim_cell_partition
+        //         << " before: from=" << from
+        //         << " to=" << to << endl;
+        // }
+
+
+
         
         // if T(n) = 0 then increment gains of all free cells on n (case 4)
         if(to == 0) {
@@ -417,7 +554,6 @@ inline void FM::updateGain(Node *node) {
                     blist_[partition-1]->removeNode(cell);
                     cell->incrementGain();
                     blist_[partition-1]->addNode(cell);
-
 
                     // removeNode(cell);
                     // cell->incrementGain();
@@ -480,12 +616,34 @@ inline void FM::updateGain(Node *node) {
             for(auto cell_info : net->getCells()) {
                 Cell *cell = cell_info->cell_ptr_;
                 if(cell->getPartition() == from_blk_partition && !cell->isLocked()) {
-                    // removeNode(cell);
-                    // cell->incrementGain();
-                    // addNode(cell);
+
+                    // GPT
+                    // if (cell->getId() == 15679) {
+                    //     cout << "  [FROM==1] updating cell 15679 on net " << net->getId()
+                    //         << " old gain=" << cell->getGain() << endl;
+                    // }
+
+
                     blist_[from_blk_partition-1]->removeNode(cell);
                     cell->incrementGain();
                     blist_[from_blk_partition-1]->addNode(cell);
+
+
+                    // // GPT
+                    // if (cell->getId() == 15679) {
+                    //     cout << "  [FROM==1] new gain=" << cell->getGain() << endl;
+                    // }
+                    
+
+
+
+
+                    // removeNode(cell);
+                    // cell->incrementGain();
+                    // addNode(cell);
+                    // blist_[from_blk_partition-1]->removeNode(cell);
+                    // cell->incrementGain();
+                    // blist_[from_blk_partition-1]->addNode(cell);
                 }
             }
         }
@@ -495,7 +653,25 @@ inline void FM::updateGain(Node *node) {
 
 }
 
-void FM::restoreBestSolution(Log *log) {
+void FM::restoreBestSolution(Log *log, int phase) {
+    int last_step = log->getLog().size() - 1;
+    int best_step = log->getBestStep() + 1;
+    // restore to the next step of best step: remain the best cell unmoved
+    cout << "best step is: " << best_step << endl;
+    cout << "last step is: " << last_step << endl;
+    for(int i=last_step; i>=best_step; i--) {
+        Cell *to_be_restored_cell = log->getLog()[i]->getCellMoved();
+        int moved_partition = to_be_restored_cell->getPartition();
+        if(phase==1) {
+            // cout << "restoring cell " << to_be_restored_cell->getId() << " from partition " << moved_partition << " to " << (moved_partition==1? 2 : 1) << endl;
+            if(moved_partition == 1) to_be_restored_cell->movePartition(2);
+            else to_be_restored_cell->movePartition(1);
+        }
+        else {
+
+        }
+    }
+    
 
 }
 

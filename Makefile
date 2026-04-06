@@ -21,7 +21,7 @@ $(TARGET): $(OBJECTS)
 # 測試功能
 test: $(TARGET)
 	@echo "Running test with test.txt..."
-	./$(TARGET) test.txt output.txt
+	./$(TARGET) appendix/case1.in output.txt
 	@echo "Test finished. Results saved in output.txt"
 	@echo "--- Output Content ---"
 	@cat output.txt

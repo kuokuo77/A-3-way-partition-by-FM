@@ -41,7 +41,7 @@ private:
 
 class Log {
 public:
-    Log(int init_cut_size) : init_cut_size_(init_cut_size), max_step_(0) {
+    Log(int init_cut_size) : init_cut_size_(init_cut_size), best_step_(-1) {
         min_cut_size_ = init_cut_size;
         cur_cut_size_ = init_cut_size;
     }
@@ -50,7 +50,7 @@ public:
         move_log_.push_back(page);
         cur_cut_size_ = cur_cut_size_ - page->getGain();
         if(cur_cut_size_ < min_cut_size_) {
-            max_step_ = page->getStep();
+            best_step_ = page->getStep();
             min_cut_size_ = cur_cut_size_;
         }
     }
@@ -61,19 +61,22 @@ public:
             cout << " cell moved: " << page->getCellMoved()->getId() << " |";
             cout << " gain: " << page->getGain() << " |" << endl;
         }
-        
     }
+    vector<Page*> getLog() const { return move_log_; }
+
     void printMinCutSize() {
-        cout << "max step: " << max_step_ << endl;
-        cout << "init cut size: " << init_cut_size_ << endl;
-        cout << "min cut size: " << min_cut_size_ << endl;
-        cout << "<< End of Log >>" << endl;
+        cout << "+-<<  Cut Info >>" << endl;
+        cout << "| max step: " << best_step_ << endl;
+        cout << "| init cut size: " << init_cut_size_ << endl;
+        cout << "| min cut size: " << min_cut_size_ << endl;
+        cout << "+=<< End of Cut info >>" << endl;
     }
+    int getBestStep() const { return best_step_; }
 
 private:
     int init_cut_size_;
     int min_cut_size_;
     int cur_cut_size_;
-    int max_step_;
+    int best_step_;
     vector<Page*> move_log_;
 };
