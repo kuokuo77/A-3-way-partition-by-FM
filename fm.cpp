@@ -85,6 +85,7 @@ void FM::Initialization() {
     // Check cut state of each net and update where the cell is located in the partition
     for(auto n : net_array_) {
         if(n != nullptr) {
+            n->resetNumInPartition();
             bool inG1 = false, inG2 = false;
             for(auto c : n->getCells()) {
                 if(c->cell_ptr_->getPartition() == 1) {
@@ -103,6 +104,9 @@ void FM::Initialization() {
                 }
             }
         }
+        // n->intraUpdateCut();
+        // if(n->isCut()) cut_size_++;
+        // n->intraUpdateCut();
     }
 
     // Calculate initial gain of each cell
@@ -221,6 +225,186 @@ void FM::Initialization() {
 
 }
 
+
+// GPT
+
+void FM::OutputResult(const string &output_file) {
+    ofstream fout(output_file);
+    if (!fout.is_open()) {
+        cerr << "Failed to open output file: " << output_file << endl;
+        return;
+    }
+
+    int g1_size = 0, g2_size = 0, g3_size = 0;
+
+    for (auto c : cell_array_) {
+        if (c == nullptr) continue;
+        if (c->getPartition() == 1) g1_size++;
+        else if (c->getPartition() == 2) g2_size++;
+        else if (c->getPartition() == 3) g3_size++;
+    }
+
+    fout << "Cutsize = " << cut_size_ << "\n";
+
+    fout << "G1 " << g1_size << "\n";
+    for (auto c : cell_array_) {
+        if (c != nullptr && c->getPartition() == 1) {
+            fout << c->getName() << " ";
+        }
+    }
+    fout << ";\n";
+
+    fout << "G2 " << g2_size << "\n";
+    for (auto c : cell_array_) {
+        if (c != nullptr && c->getPartition() == 2) {
+            fout << c->getName() << " ";
+        }
+    }
+    fout << ";\n";
+
+    fout << "G3 " << g3_size << "\n";
+    for (auto c : cell_array_) {
+        if (c != nullptr && c->getPartition() == 3) {
+            fout << c->getName() << " ";
+        }
+    }
+    fout << ";\n";
+
+    fout.close();
+}
+
+void FM::InitPhaseTwo() {
+    bool toG3 = false;
+    int counter = 0;
+
+    for (auto c : cell_array_) {
+        if (c != nullptr && c->getPartition() == 2) {
+            toG3 = (counter++ % 2 == 0);
+            if (toG3) {
+                // cout << "cell" << c->getId() << "is moved to G3" << endl;
+                c->movePartition(3);
+            }
+        }
+    }
+
+    RebuildNetStateAndCutsize();
+    cout << "[After phase 2 init] cut size: " << cut_size_ << endl;
+}
+
+
+// void FM::InitPhaseTwo() {
+//     bool toG3 = 0;
+//     int counter = 0;
+//     // Randomly Seperate the cells in set 2 to set 2 or set 3
+//     for(auto c : cell_array_) {
+//         if(c!=nullptr && c->getPartition()==2) {
+//             toG3 = (counter++ % 2 == 0);
+//             if(toG3) {
+//                 c->movePartition(3);
+//                 decrementNumInPartition(2);
+//                 incrementNumInPartition(3);
+//             }
+//         }
+//     }
+//     cout << "[Before re-calculate cutsize] cut size: " << cut_size_ << endl;
+//     // Update cut state: once a net is cut, it cannot be cut again
+//     cut_size_ = 0;
+//     for(auto n : net_array_) {
+//         if(n != nullptr) {
+//             n->resetNumInPartition();
+//             int inG1 = 0; int inG2 = 0; int inG3 = 0;
+//             for(auto c : n->getCells()) {
+//                 if(c->cell_ptr_->getPartition() == 1) {
+//                     inG1 = 1;
+//                     n->incrementNumInPartition(1);
+//                 }
+//                 else if(c->cell_ptr_->getPartition() == 2) {
+//                     inG2 = 1;
+//                     n->incrementNumInPartition(2);
+//                 }
+//                 else if(c->cell_ptr_->getPartition() == 3) {
+//                     inG3 = 1;
+//                     n->incrementNumInPartition(3);
+//                 }
+
+                
+//             }
+//             if(inG1 + inG2 + inG3 > 1) {
+//                 if(n->isCut()==false) {
+//                     n->updateCut(true);
+//                     cut_size_++;
+//                 }
+//             }
+//         }
+//     }
+
+
+
+
+
+
+
+// }
+
+void FM::InitGainPhaseTwo() {
+    // 先清掉 phase 2 會用到的 gain 狀態
+    for (auto c : cell_array_) {
+        if (c != nullptr && (c->getPartition() == 2 || c->getPartition() == 3)) {
+            c->resetGain();   // fs_=0, te_=0
+            c->Unlock();      // phase 2 重新開始
+        }
+    }
+
+    // 只看完全不含 set 1 的 nets
+    for (auto n : net_array_) {
+        if (n == nullptr) continue;
+        if (n->getNumInPartition(1) > 0) continue;
+
+        int inG2 = 0, inG3 = 0;
+
+        for (auto c : n->getCells()) {
+            int p = c->cell_ptr_->getPartition();
+            if (p == 2) inG2++;
+            else if (p == 3) inG3++;
+        }
+
+        // TE condition
+        if (inG2 == 0 || inG3 == 0) {
+            for (auto c : n->getCells()) {
+                int p = c->cell_ptr_->getPartition();
+                if (p == 2 || p == 3) {
+                    c->cell_ptr_->incrementTE();
+                }
+            }
+        }
+
+        // FS condition for G2
+        if (inG2 == 1) {
+            for (auto c : n->getCells()) {
+                if (c->cell_ptr_->getPartition() == 2) {
+                    c->cell_ptr_->incrementFS();
+                }
+            }
+        }
+
+        // FS condition for G3
+        if (inG3 == 1) {
+            for (auto c : n->getCells()) {
+                if (c->cell_ptr_->getPartition() == 3) {
+                    c->cell_ptr_->incrementFS();
+                }
+            }
+        }
+    }
+
+    // 最後轉成 gain
+    for (auto c : cell_array_) {
+        if (c != nullptr && (c->getPartition() == 2 || c->getPartition() == 3)) {
+            c->setInitGain();
+        }
+    }
+}
+
 void FM::Solve() {
     int cur_step = 0;
     // Do 1:2 partition
@@ -232,81 +416,35 @@ void FM::Solve() {
 
 
     // Maintain that the left partition remains 1/3 of total number of cells
-    int min_available_cells = (1-ratio_) * cell_array_.size() / 3;
-    int max_available_cells = (1+ratio_) * cell_array_.size() / 3;
+    int min_available_cells = (ceil((1-ratio_)  * cell_count_ / 3));
+    int max_available_cells = (floor((1+ratio_) * cell_count_ / 3));
+
+    cout << "======================================" << endl;
+    cout << "ratio:" << ratio_ << endl;
+    cout << "max available cell: " << max_available_cells << endl;
+    cout << "min available cell: " << min_available_cells << endl;
+    cout << "cell count from cell array: " << cell_array_.size() << endl;
+    cout << "cell count: " << cell_count_ << endl;
+    cout << "======================================" << endl;
+
 
     // int total_num_cell = cell_array_.size();
     Log log(cut_size_);
 
-    // GPT
-    // int running_cut = cut_size_;
-
-
-    // Create a log to store moving history
-    // blist_[0]->printList();
-    // blist_[1]->printList();
-    // cout << "================ initial blist ==================" << endl;
     for(int i=0; i<cell_count_; i++) {
-        // cout << "iter: " << i << endl;
-        // if(i==7086) {
-        //     cout << "<< LEFT PARTITON >>" << endl;
-        //     blist_[0]->printList();
-        //     cout << "<< RIGHT PARTITON >>" << endl;
-        //     blist_[1]->printList();
-        // }
-        
-        
-
-
         Page *page = new Page();
         page->setStep(cur_step++);
-
 
         Node *left_node = left->getMaxGainNode();
         Node *right_node = right->getMaxGainNode();
 
-        // GPT
-        // if (left_node) {
-        //     int g_stored = left_node->getCell()->getGain();
-        //     int g_true   = recomputeGainFromScratch(left_node->getCell());
-        //     if (g_stored != g_true) {
-        //         cout << "[LEFT GAIN MISMATCH] step " << i
-        //             << " cell " << left_node->getCell()->getId()
-        //             << " stored " << g_stored
-        //             << " true " << g_true << endl;
-        //             debugCellGainBreakdown(left_node->getCell());
-        //         break;
-        //     }
-        // }
-
-        // if (right_node) {
-        //         int g_stored = right_node->getCell()->getGain();
-        //         int g_true   = recomputeGainFromScratch(right_node->getCell());
-        //         if (g_stored != g_true) {
-        //             cout << "[RIGHT GAIN MISMATCH] step " << i
-        //                 << " cell " << right_node->getCell()->getId()
-        //                 << " stored " << g_stored
-        //                 << " true " << g_true << endl;
-        //                 debugIncidentNetCounts(right_node->getCell());
-        //                 debugCellGainBreakdown(right_node->getCell());
-        //             break;
-        //         }
-        //     }
-
-
-
-        // if(i==7086) {
-        //     cout << "left node: " << left_node->getCell()->getId() << " right node: " << right_node->getCell()->getId() << endl;
-        //     cout << "=====================================" << endl;
-        //     cout << "num node in left: " << left->getNumCells() << " num node in right: " << right->getNumCells() << endl;
-        // }
+       
         // Find the valid move
         if(left_node == nullptr && right_node == nullptr) {
             cout << "No more valid move! because all cells are in the same partition" << endl;
             break;
         }
         else if(left_node != nullptr && right_node == nullptr) {
-            // cout << "case 2" << endl;
             if(getNumInPartition(1)-1<min_available_cells) {
                 cout << "No more valid move! because the left partion can not lose any cell" << endl;
                 break;
@@ -315,27 +453,16 @@ void FM::Solve() {
                 // move from left to right
                 decrementNumInPartition(1);
                 incrementNumInPartition(2);
-                // updateGain(left_node);
-                // left_node->getCell()->movePartition(2);
 
-                // page->setCellMoved(left_node->getCell());
-                // page->setGain(left_node->getCell()->getGain());
                 int selected_gian = left_node->getCell()->getGain();
                 Cell *moved = left_node->getCell();
                 updateGain(left_node);
                 moved->movePartition(2);
                 page->setCellMoved(moved);
                 page->setGain(selected_gian);
-
-
-
-                
-                // left->getBL()[left_node->getCell()->getGain() + getPmax()].remove(left_node);
             }
         }
         else if(left_node == nullptr && right_node != nullptr) {
-
-            // if(i==7086)cout << "here==" << endl;
             if(getNumInPartition(1)+1>max_available_cells) {
                 cout << "No more valid move! because the left partion can not gain any cell" << endl;
                 break;
@@ -344,13 +471,6 @@ void FM::Solve() {
                 // move from right to left
                 incrementNumInPartition(1);
                 decrementNumInPartition(2);
-                
-
-                // updateGain(right_node);
-                // right_node->getCell()->movePartition(1);
-
-                // page->setCellMoved(right_node->getCell());
-                // page->setGain(right_node->getCell()->getGain());
 
                 int selected_gian = right_node->getCell()->getGain();
                 Cell *moved = right_node->getCell();
@@ -358,32 +478,15 @@ void FM::Solve() {
                 moved->movePartition(1);
                 page->setCellMoved(moved);
                 page->setGain(selected_gian);
-                
-
-
-                // right->getBL()[right_node->getCell()->getGain() + getPmax()].remove(right_node);
-                
             }
         }
         else {
-            // if(!left_node || !right_node) break;
-            // cout << "case 4" << endl;
-            // cout << "---------------------------------------------" << endl;
-            // cout << "left:  " << left_node->getCell()->getId() << " gain: " << left_node->getCell()->getGain() << endl;
-            // cout << "right: " << right_node->getCell()->getId() << " gain: " << right_node->getCell()->getGain() << endl;
-            // cout << "---------------------------------------------" << endl;
-            
             if(left_node->getCell()->getGain() >= right_node->getCell()->getGain()) {
                 
                 if(getNumInPartition(1)-1<min_available_cells) {
                     // move from right to left
                     incrementNumInPartition(1);
                     decrementNumInPartition(2);
-                    // updateGain(right_node);
-                    // right_node->getCell()->movePartition(1);
-
-                    // page->setCellMoved(right_node->getCell());
-                    // page->setGain(right_node->getCell()->getGain());
 
                     int selected_gian = right_node->getCell()->getGain();
                     Cell *moved = right_node->getCell();
@@ -391,25 +494,17 @@ void FM::Solve() {
                     moved->movePartition(1);
                     page->setCellMoved(moved);
                     page->setGain(selected_gian);
-
-                    // right->getBL()[right_node->getCell()->getGain() + getPmax()].remove(right_node);
                 }
                 else {
                     decrementNumInPartition(1);
                     incrementNumInPartition(2);
-                    // updateGain(left_node);
-                    // left_node->getCell()->movePartition(2);
 
-                    // page->setCellMoved(left_node->getCell());
-                    // page->setGain(left_node->getCell()->getGain());
                     int selected_gian = left_node->getCell()->getGain();
                     Cell *moved = left_node->getCell();
                     updateGain(left_node);
                     moved->movePartition(2);
                     page->setCellMoved(moved);
                     page->setGain(selected_gian);
-                    // TODO: Remove operation should be Encapsulated
-                    // left->getBL()[left_node->getCell()->getGain() + getPmax()].remove(left_node);
                 }
             }
             else {
@@ -418,11 +513,6 @@ void FM::Solve() {
                     
                     decrementNumInPartition(1);
                     incrementNumInPartition(2);
-                    // updateGain(left_node);
-                    // left_node->getCell()->movePartition(2);
-
-                    // page->setCellMoved(left_node->getCell());
-                    // page->setGain(left_node->getCell()->getGain());
 
                     int selected_gian = left_node->getCell()->getGain();
                     Cell *moved = left_node->getCell();
@@ -430,18 +520,10 @@ void FM::Solve() {
                     moved->movePartition(2);
                     page->setCellMoved(moved);
                     page->setGain(selected_gian);
-
-                    // left->getBL()[left_node->getCell()->getGain() + getPmax()].remove(left_node);
                 }
                 else {
-                    
                     incrementNumInPartition(1);
                     decrementNumInPartition(2);
-                    // updateGain(right_node);
-                    // right_node->getCell()->movePartition(1);
-                    
-                    // page->setCellMoved(right_node->getCell());
-                    // page->setGain(right_node->getCell()->getGain());
 
                     int selected_gian = right_node->getCell()->getGain();
                     Cell *moved = right_node->getCell();
@@ -449,37 +531,11 @@ void FM::Solve() {
                     moved->movePartition(1);
                     page->setCellMoved(moved);
                     page->setGain(selected_gian);
-
-
-                    // blist_[0]->printList();
-                    // right->getBL()[right_node->getCell()->getGain() + getPmax()].remove(right_node);
                 }
             }
         }
-        // blist_[0]->printList();
-        // blist_[1]->printList();
-        // cout << "================ end of iter " << i << " ===================" << endl;
-
-        
-
 
         log.addPage(page);
-
-        // // GPT
-        // int actual_cut = recomputeCutSizeFromPartitions();
-        // int expected_cut = running_cut - page->getGain();
-
-        // if (actual_cut != expected_cut) {
-        //     cout << "Mismatch at step " << page->getStep()
-        //         << ", cell " << page->getCellMoved()->getId()
-        //         << ", gain " << page->getGain()
-        //         << ", expected " << expected_cut
-        //         << ", actual " << actual_cut << endl;
-        //     break;
-        // }
-
-        // running_cut = actual_cut;
-        // if(i>=7085)cout << "finish iter " << i << endl;
     }
     
     // log.printLog();
@@ -487,13 +543,27 @@ void FM::Solve() {
     // cout << "total net: " << net_count_ << endl;
     // cout << "total gain: " << getTotalGain() << endl;
     restoreBestSolution(&log, 1);
+    
+    // int temp_cut = 0;
+    // for(auto n : net_array_) {
+    //     n->intraUpdateCut();
+    //     if(n->isCut()==true) temp_cut++;
+    // }
 
-    int temp_cut = 0;
-    for(auto n : net_array_) {
-        n->intraUpdateCut();
-        if(n->isCut()==true) temp_cut++;
-    }
-    cout << "after restore, cut size is: " << temp_cut << endl;
+    // GPT
+    RebuildNetStateAndCutsize();
+
+    cout << "after restore, cut size is: " << cut_size_ << endl;
+    cout << "min cut size recorded in log: " << log.getMinCutSize() << endl;
+
+    // updateCutsize(log.getMinCutSize());
+    // Finish Phase 1
+    // Start processing phase 2
+
+
+
+
+    cout << "cutsize recorded in fm: " << cut_size_ << endl;
 
 }
 
@@ -504,27 +574,13 @@ inline void FM::updateGain(Node *node) {
     
     blist_[partition-1]->removeNode(node->getCell());
 
-    // cout << "updating gain of cell " << node->getCell()->getId() << " to " << node->getCell()->getGain() << endl;
-    // cout << "updating gain of cell " << node->getCell()->getId() << " to " << node->getCell()->getGain() << endl;
-    // cout << "updating gain of cell " << node->getCell()->getId() << " to " << node->getCell()->getGain() << endl;
-    // cout << "updating gain of cell " << node->getCell()->getId() << " to " << node->getCell()->getGain() << endl;
-    // cout << "processing node " << node->getId() << node->getCell()->isLocked() << endl;
-
     int from, to;
-
-    // Create the Page and add it to the log
 
     // for each net n on the base cell do
     for(auto net_info : node->getCell()->getNets()) {
 
         Net *net = net_info->net_ptr_;
         int victim_cell_partition = node->getCell()->getPartition();
-        // cout << "--- iter " << net->getName() << " --- " << endl;
-
-        
-
-
-        
         if(victim_cell_partition == 1) {
             from = net->getNumInPartition(1);
             to = net->getNumInPartition(2);
@@ -534,17 +590,6 @@ inline void FM::updateGain(Node *node) {
             to = net->getNumInPartition(1);
         }
 
-        // GPT
-        // if (net->getId() == 12905) {
-        //     cout << "[WATCH12905] base cell " << node->getCell()->getId()
-        //         << " basePart " << victim_cell_partition
-        //         << " before: from=" << from
-        //         << " to=" << to << endl;
-        // }
-
-
-
-        
         // if T(n) = 0 then increment gains of all free cells on n (case 4)
         if(to == 0) {
             for(auto cell_info : net->getCells()) {
@@ -554,11 +599,6 @@ inline void FM::updateGain(Node *node) {
                     blist_[partition-1]->removeNode(cell);
                     cell->incrementGain();
                     blist_[partition-1]->addNode(cell);
-
-                    // removeNode(cell);
-                    // cell->incrementGain();
-                    // addNode(cell);
-                    
                 }
             }
         }
@@ -572,9 +612,6 @@ inline void FM::updateGain(Node *node) {
                     blist_[to_blk_partition-1]->removeNode(cell);
                     cell->decrementGain();
                     blist_[to_blk_partition-1]->addNode(cell);
-                    // removeNode(cell);
-                    // cell->decrementGain();
-                    // addNode(cell);
                 }
             }
         }
@@ -616,34 +653,9 @@ inline void FM::updateGain(Node *node) {
             for(auto cell_info : net->getCells()) {
                 Cell *cell = cell_info->cell_ptr_;
                 if(cell->getPartition() == from_blk_partition && !cell->isLocked()) {
-
-                    // GPT
-                    // if (cell->getId() == 15679) {
-                    //     cout << "  [FROM==1] updating cell 15679 on net " << net->getId()
-                    //         << " old gain=" << cell->getGain() << endl;
-                    // }
-
-
                     blist_[from_blk_partition-1]->removeNode(cell);
                     cell->incrementGain();
                     blist_[from_blk_partition-1]->addNode(cell);
-
-
-                    // // GPT
-                    // if (cell->getId() == 15679) {
-                    //     cout << "  [FROM==1] new gain=" << cell->getGain() << endl;
-                    // }
-                    
-
-
-
-
-                    // removeNode(cell);
-                    // cell->incrementGain();
-                    // addNode(cell);
-                    // blist_[from_blk_partition-1]->removeNode(cell);
-                    // cell->incrementGain();
-                    // blist_[from_blk_partition-1]->addNode(cell);
                 }
             }
         }
@@ -653,27 +665,27 @@ inline void FM::updateGain(Node *node) {
 
 }
 
-void FM::restoreBestSolution(Log *log, int phase) {
-    int last_step = log->getLog().size() - 1;
-    int best_step = log->getBestStep() + 1;
-    // restore to the next step of best step: remain the best cell unmoved
-    cout << "best step is: " << best_step << endl;
-    cout << "last step is: " << last_step << endl;
-    for(int i=last_step; i>=best_step; i--) {
-        Cell *to_be_restored_cell = log->getLog()[i]->getCellMoved();
-        int moved_partition = to_be_restored_cell->getPartition();
-        if(phase==1) {
-            // cout << "restoring cell " << to_be_restored_cell->getId() << " from partition " << moved_partition << " to " << (moved_partition==1? 2 : 1) << endl;
-            if(moved_partition == 1) to_be_restored_cell->movePartition(2);
-            else to_be_restored_cell->movePartition(1);
-        }
-        else {
+// void FM::restoreBestSolution(Log *log, int phase) {
+//     int last_step = log->getLog().size() - 1;
+//     int best_step = log->getBestStep() + 1;
+//     // restore to the next step of best step: remain the best cell unmoved
+//     cout << "best step is: " << best_step << endl;
+//     cout << "last step is: " << last_step << endl;
+//     for(int i=last_step; i>=best_step; i--) {
+//         Cell *to_be_restored_cell = log->getLog()[i]->getCellMoved();
+//         int moved_partition = to_be_restored_cell->getPartition();
+//         if(phase==1) {
+//             // cout << "restoring cell " << to_be_restored_cell->getId() << " from partition " << moved_partition << " to " << (moved_partition==1? 2 : 1) << endl;
+//             if(moved_partition == 1) to_be_restored_cell->movePartition(2);
+//             else to_be_restored_cell->movePartition(1);
+//         }
+//         else {
 
-        }
-    }
+//         }
+//     }
     
 
-}
+// }
 
 
 void FM::Print_Cell_array() {
@@ -702,3 +714,5 @@ void FM::Print_Net_array() {
         }
     }
 }
+
+

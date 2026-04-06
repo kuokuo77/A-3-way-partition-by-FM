@@ -20,11 +20,12 @@ $(TARGET): $(OBJECTS)
 
 # 測試功能
 test: $(TARGET)
-	@echo "Running test with test.txt..."
-	./$(TARGET) appendix/case1.in output.txt
-	@echo "Test finished. Results saved in output.txt"
-	@echo "--- Output Content ---"
-	@cat output.txt
+	@echo "Running test with your input"
+	./$(TARGET) test.in output.out
+# 	./$(TARGET) appendix/case1.in output.out
+	@echo "Test finished. Results saved in output.out"
+# 	@echo "--- Output Content ---"
+# 	@cat output.txt
 
 # 清除編譯產出的檔案
 clean:

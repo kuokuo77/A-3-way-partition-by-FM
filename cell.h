@@ -101,6 +101,26 @@ inline void Net::intraUpdateCut() {
     // cout << "net " << getId() << " inG1: " << inG1 << " inG2: " << inG2 << " inG3: " << inG3 << endl;
     is_cut_ =  (inG1+inG2+inG3>1);
 
+    // if(this != nullptr) {
+    //         this->resetNumInPartition();
+    //         bool inG1 = false, inG2 = false;
+    //         for(auto c : this->getCells()) {
+    //             if(c->cell_ptr_->getPartition() == 1) {
+    //                 inG1 = true;
+    //                 this->incrementNumInPartition(1);
+    //             }
+    //             else if(c->cell_ptr_->getPartition() == 2) {
+    //                 inG2 = true;
+    //                 this->incrementNumInPartition(2);
+    //             }
+    //             if(inG1 && inG2) {
+    //                 if(this->isCut()==false) {
+    //                     this->updateCut(true);
+    //                 }
+    //             }
+    //         }
+    //     }
+
 }
 
 #endif

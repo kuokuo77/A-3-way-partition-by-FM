@@ -32,6 +32,7 @@ public:
     int getNumCells() const { return num_cells_; };
     vector<list<Node*>>& getBL() { return bl_; }
     void removeNode(Cell* cell);
+    void resetBlist() { bl_.clear(); num_cells_=0;}
 
 private:
     int pmax_;

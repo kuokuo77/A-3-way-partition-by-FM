@@ -47,6 +47,7 @@ public:
 	bool isCut() const { return is_cut_; }
 	void intraUpdateCut();
 
+	void resetNumInPartition() { num_in_partition_.assign(3, 0); }
 	void incrementNumInPartition(int p) { num_in_partition_[p-1]++; }
 	void decrementNumInPartition(int p) { num_in_partition_[p-1]--; }
 	int getNumInPartition(int p) const { return num_in_partition_[p-1]; }

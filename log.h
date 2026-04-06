@@ -72,6 +72,7 @@ public:
         cout << "+=<< End of Cut info >>" << endl;
     }
     int getBestStep() const { return best_step_; }
+    int getMinCutSize() { return min_cut_size_; }
 
 private:
     int init_cut_size_;

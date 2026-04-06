@@ -24,9 +24,11 @@ int main(int argc, char *argv[]) {
         cerr << "Error: Unable to open file " << argv[1] << "\n";
         return 1;
     }
+    string OutputFile = argv[2];
 
     FM fm(InputFile);
-    fm.Solve();
+    fm.Run();
+    fm.OutputResult(OutputFile);
 
     cout << "Finish FM" << endl;
 
